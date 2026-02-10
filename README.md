@@ -1,5 +1,7 @@
 # Quiz Optimization System
 
+**Developed By:** Gavithra Perera
+
 A full-stack web application that uses **Dynamic Programming (0/1 Knapsack)** to optimize quiz question selection. Given a time constraint, the system recommends the optimal subset of questions that maximizes total score without exceeding available time.
 
 Built as a technical assessment demonstrating proficiency in algorithm implementation, full-stack development, and clean code practices.
