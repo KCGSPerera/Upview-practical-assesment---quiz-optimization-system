@@ -13,6 +13,12 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import type { Quiz, Question, QuestionsResponse, QuestionDifficulty } from '@/lib/types';
 
+interface User {
+  id: string;
+  email: string;
+  full_name: string | null;
+}
+
 export default function QuizAttemptPage() {
   const params = useParams();
   const quizId = params.quizId as string;
@@ -22,12 +28,64 @@ export default function QuizAttemptPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<QuestionDifficulty | 'all'>('all');
+  
+  // User authentication state
+  const [email, setEmail] = useState('');
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [quizStarted, setQuizStarted] = useState(false);
+  const [startingQuiz, setStartingQuiz] = useState(false);
 
   useEffect(() => {
-    if (quizId) {
+    if (quizId && quizStarted) {
       fetchQuestions();
     }
-  }, [quizId, selectedDifficulty]);
+  }, [quizId, selectedDifficulty, quizStarted]);
+
+  async function handleStartQuiz() {
+    if (!email.trim()) {
+      alert('Please enter your email address');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setStartingQuiz(true);
+      setError(null);
+
+      // Look up or create user
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        setError(data.error || 'Failed to start quiz');
+        return;
+      }
+
+      setCurrentUser(data.user);
+      setQuizStarted(true);
+      
+      if (data.isNewUser) {
+        alert(`Welcome! Your account has been created.`);
+      } else {
+        alert(`Welcome back, ${data.user.email}!`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start quiz');
+    } finally {
+      setStartingQuiz(false);
+    }
+  }
 
   async function fetchQuestions() {
     try {
@@ -55,6 +113,82 @@ export default function QuizAttemptPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Show start screen if quiz hasn't started
+  if (!quizStarted) {
+    return (
+      <main>
+        <Link href="/" style={{ color: '#0070f3' }}>← Back to Quizzes</Link>
+        <div style={{ marginTop: '2rem', maxWidth: '500px', margin: '2rem auto' }}>
+          <h1 style={{ textAlign: 'center' }}>Start Quiz</h1>
+          <p style={{ textAlign: 'center', color: '#666', marginBottom: '2rem' }}>
+            Enter your email to begin. Your progress will be tracked and all attempts will be recorded.
+          </p>
+          
+          <div style={{
+            padding: '2rem',
+            border: '1px solid #ddd',
+            borderRadius: '8px',
+            backgroundColor: '#fafafa'
+          }}>
+            <label
+              htmlFor="email-input"
+              style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}
+            >
+              Email Address:
+            </label>
+            <input
+              id="email-input"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleStartQuiz()}
+              placeholder="your.email@example.com"
+              disabled={startingQuiz}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '5px',
+                fontSize: '16px',
+                marginBottom: '1rem',
+              }}
+            />
+            <button
+              onClick={handleStartQuiz}
+              disabled={startingQuiz}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1.5rem',
+                backgroundColor: '#0070f3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: startingQuiz ? 'default' : 'pointer',
+                fontSize: '16px',
+                fontWeight: 'bold',
+              }}
+            >
+              {startingQuiz ? 'Starting...' : 'Start Quiz'}
+            </button>
+            
+            {error && (
+              <div style={{
+                marginTop: '1rem',
+                padding: '0.75rem',
+                backgroundColor: '#fee',
+                border: '1px solid #fcc',
+                borderRadius: '5px',
+                color: '#c33',
+              }}>
+                {error}
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (loading) {
@@ -98,10 +232,25 @@ export default function QuizAttemptPage() {
       <Link href="/" style={{ color: '#0070f3' }}>← Back to Quizzes</Link>
       
       <div style={{ marginTop: '1.5rem' }}>
-        <h1>{quiz.title}</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h1 style={{ margin: 0 }}>{quiz.title}</h1>
+          <div style={{ fontSize: '0.9rem', color: '#666' }}>
+            <strong>User:</strong> {currentUser?.email}
+          </div>
+        </div>
         {quiz.description && (
           <p style={{ color: '#666', marginBottom: '1rem' }}>{quiz.description}</p>
         )}
+        <div style={{
+          padding: '0.5rem 1rem',
+          backgroundColor: '#e6f7ff',
+          border: '1px solid #91d5ff',
+          borderRadius: '5px',
+          marginBottom: '1rem',
+          fontSize: '0.9rem'
+        }}>
+          ℹ️ You can attempt each question multiple times. All attempts will be recorded.
+        </div>
 
         <div style={{ 
           display: 'flex', 
@@ -159,7 +308,7 @@ export default function QuizAttemptPage() {
             <h2>Questions</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1rem' }}>
               {questions.map((question, index) => (
-                <QuestionCard key={question.id} question={question} index={index} />
+                <QuestionCard key={question.id} question={question} index={index} userId={currentUser!.id} />
               ))}
             </div>
 
@@ -199,12 +348,14 @@ export default function QuizAttemptPage() {
 interface QuestionCardProps {
   question: Question;
   index: number;
+  userId: string;
 }
 
-function QuestionCard({ question, index }: QuestionCardProps) {
+function QuestionCard({ question, index, userId }: QuestionCardProps) {
   const [answer, setAnswer] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [attemptCount, setAttemptCount] = useState(0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -221,7 +372,7 @@ function QuestionCard({ question, index }: QuestionCardProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: '550e8400-e29b-41d4-a716-446655440000', // Demo user from seed data
+          user_id: userId,
           quiz_id: question.quiz_id,
           question_id: question.id,
           answer_text: answer,
@@ -236,8 +387,16 @@ function QuestionCard({ question, index }: QuestionCardProps) {
         return;
       }
 
+      const newAttemptCount = attemptCount + 1;
+      setAttemptCount(newAttemptCount);
       setSubmitted(true);
-      alert('Answer submitted successfully!');
+      alert(`Answer submitted successfully! (Attempt #${newAttemptCount})`);
+      
+      // Reset form for next attempt
+      setTimeout(() => {
+        setSubmitted(false);
+        setAnswer('');
+      }, 1500);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to submit answer');
     } finally {
@@ -278,6 +437,20 @@ function QuestionCard({ question, index }: QuestionCardProps) {
           >
             {question.difficulty}
           </span>
+          {attemptCount > 0 && (
+            <span
+              style={{
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                borderRadius: '4px',
+                backgroundColor: '#e6f7ff',
+                color: '#0070f3',
+              }}
+            >
+              {attemptCount} attempt{attemptCount > 1 ? 's' : ''}
+            </span>
+          )}
         </div>
         <p style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>
           {question.question_text}

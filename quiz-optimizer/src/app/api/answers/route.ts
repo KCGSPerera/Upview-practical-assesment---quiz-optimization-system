@@ -2,7 +2,7 @@
  * POST /api/answers
  * 
  * Submits a user's answer to a specific question.
- * Enforces unique constraint: one answer per user per question.
+ * Allows multiple attempts: all answer submissions are stored as separate records.
  */
 
 import { NextResponse } from 'next/server';
@@ -78,7 +78,8 @@ export async function POST(request: Request): Promise<NextResponse<SubmitAnswerR
       );
     }
 
-    // Insert the answer into the database
+    // Insert the answer - allows multiple attempts per question
+    // Each submission is stored as a separate record for history tracking
     const { data: answer, error: insertError } = await supabase
       .from('answers')
       .insert({
@@ -91,21 +92,8 @@ export async function POST(request: Request): Promise<NextResponse<SubmitAnswerR
       .select()
       .single();
 
-    // Handle unique constraint violation (duplicate answer)
+    // Handle database errors
     if (insertError) {
-      // PostgreSQL unique violation error code
-      if (insertError.code === '23505') {
-        return NextResponse.json(
-          {
-            answer: {} as any,
-            success: false,
-            error: 'You have already answered this question. Each question can only be answered once.',
-          },
-          { status: 409 }
-        );
-      }
-
-      // Other database errors
       console.error('Database error inserting answer:', insertError);
       return NextResponse.json(
         {
