@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       .insert({
         email: validatedData.email,
         full_name: validatedData.full_name || null,
-      })
+      } as any)
       .select()
       .single();
 
