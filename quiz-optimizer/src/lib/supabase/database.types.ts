@@ -71,6 +71,7 @@ export interface Database {
           score: number;
           time_required: number;
           question_order: number;
+          difficulty: 'easy' | 'medium' | 'hard';
           created_at: string;
           updated_at: string;
         };
@@ -81,6 +82,7 @@ export interface Database {
           score: number;
           time_required: number;
           question_order?: number;
+          difficulty?: 'easy' | 'medium' | 'hard';
           created_at?: string;
           updated_at?: string;
         };
@@ -91,6 +93,7 @@ export interface Database {
           score?: number;
           time_required?: number;
           question_order?: number;
+          difficulty?: 'easy' | 'medium' | 'hard';
           created_at?: string;
           updated_at?: string;
         };

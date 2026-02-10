@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import type { Quiz, Question, QuestionsResponse } from '@/lib/types';
+import type { Quiz, Question, QuestionsResponse, QuestionDifficulty } from '@/lib/types';
 
 export default function QuizAttemptPage() {
   const params = useParams();
@@ -21,19 +21,26 @@ export default function QuizAttemptPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<QuestionDifficulty | 'all'>('all');
 
   useEffect(() => {
     if (quizId) {
       fetchQuestions();
     }
-  }, [quizId]);
+  }, [quizId, selectedDifficulty]);
 
   async function fetchQuestions() {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/quizzes/${quizId}/questions`);
+      // Build URL with optional difficulty parameter
+      let url = `/api/quizzes/${quizId}/questions`;
+      if (selectedDifficulty !== 'all') {
+        url += `?difficulty=${selectedDifficulty}`;
+      }
+
+      const response = await fetch(url);
       const data: QuestionsResponse = await response.json();
 
       if (!data.success) {
@@ -115,9 +122,37 @@ export default function QuizAttemptPage() {
           </div>
         </div>
 
+        {/* Difficulty Filter */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <label
+            htmlFor="difficulty-filter"
+            style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}
+          >
+            Filter by Difficulty:
+          </label>
+          <select
+            id="difficulty-filter"
+            value={selectedDifficulty}
+            onChange={(e) => setSelectedDifficulty(e.target.value as QuestionDifficulty | 'all')}
+            style={{
+              padding: '0.5rem',
+              fontSize: '16px',
+              borderRadius: '5px',
+              border: '1px solid #ddd',
+              backgroundColor: 'white',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="all">All</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
         {questions.length === 0 ? (
           <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
-            <p>No questions available for this quiz.</p>
+            <p>No questions available{selectedDifficulty !== 'all' ? ` for difficulty: ${selectedDifficulty}` : ' for this quiz'}.</p>
           </div>
         ) : (
           <>
@@ -220,9 +255,30 @@ function QuestionCard({ question, index }: QuestionCardProps) {
       }}
     >
       <div style={{ marginBottom: '1rem' }}>
-        <h3 style={{ marginBottom: '0.5rem' }}>
-          Question {index + 1}
-        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <h3 style={{ margin: 0 }}>
+            Question {index + 1}
+          </h3>
+          <span
+            style={{
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
+              borderRadius: '4px',
+              textTransform: 'uppercase',
+              backgroundColor: 
+                question.difficulty === 'easy' ? '#d4edda' : 
+                question.difficulty === 'medium' ? '#fff3cd' : 
+                '#f8d7da',
+              color: 
+                question.difficulty === 'easy' ? '#155724' : 
+                question.difficulty === 'medium' ? '#856404' : 
+                '#721c24',
+            }}
+          >
+            {question.difficulty}
+          </span>
+        </div>
         <p style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>
           {question.question_text}
         </p>

@@ -2,6 +2,8 @@
 // CORE DATABASE ENTITY TYPES
 // ============================================
 
+export type QuestionDifficulty = 'easy' | 'medium' | 'hard';
+
 export interface User {
   id: string;
   email: string;
@@ -27,6 +29,7 @@ export interface Question {
   score: number;
   time_required: number;
   question_order: number;
+  difficulty: QuestionDifficulty;
   created_at: string;
   updated_at: string;
 }

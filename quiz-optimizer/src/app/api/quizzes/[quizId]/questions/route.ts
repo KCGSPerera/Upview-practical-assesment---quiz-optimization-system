@@ -3,11 +3,14 @@
  * 
  * Returns all questions for a specific quiz.
  * Validates that the quiz exists before returning questions.
+ * 
+ * Optional query parameter:
+ * - difficulty: Filter questions by difficulty (easy | medium | hard)
  */
 
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import type { QuestionsResponse } from '@/lib/types';
+import type { QuestionsResponse, QuestionDifficulty } from '@/lib/types';
 
 interface RouteParams {
   params: Promise<{
@@ -15,12 +18,18 @@ interface RouteParams {
   }>;
 }
 
+const VALID_DIFFICULTIES: QuestionDifficulty[] = ['easy', 'medium', 'hard'];
+
 export async function GET(
   request: Request,
   { params }: RouteParams
 ): Promise<NextResponse<QuestionsResponse>> {
   try {
     const { quizId } = await params;
+
+    // Parse URL to get query parameters
+    const { searchParams } = new URL(request.url);
+    const difficultyParam = searchParams.get('difficulty');
 
     // Validate quizId parameter
     if (!quizId || typeof quizId !== 'string' || quizId.trim() === '') {
@@ -33,6 +42,23 @@ export async function GET(
         },
         { status: 400 }
       );
+    }
+
+    // Validate difficulty parameter if provided
+    let difficulty: QuestionDifficulty | null = null;
+    if (difficultyParam) {
+      if (!VALID_DIFFICULTIES.includes(difficultyParam as QuestionDifficulty)) {
+        return NextResponse.json(
+          {
+            questions: [],
+            quiz: {} as any,
+            success: false,
+            error: `Invalid difficulty parameter. Must be one of: ${VALID_DIFFICULTIES.join(', ')}`,
+          },
+          { status: 400 }
+        );
+      }
+      difficulty = difficultyParam as QuestionDifficulty;
     }
 
     // Create server-side Supabase client
@@ -58,11 +84,19 @@ export async function GET(
       );
     }
 
-    // Fetch questions for this quiz, ordered by question_order
-    const { data: questions, error: questionsError } = await supabase
+    // Build the questions query
+    let query = supabase
       .from('questions')
       .select('*')
-      .eq('quiz_id', quizId)
+      .eq('quiz_id', quizId);
+
+    // Apply difficulty filter only if provided
+    if (difficulty) {
+      query = query.eq('difficulty', difficulty);
+    }
+
+    // Execute query with ordering
+    const { data: questions, error: questionsError } = await query
       .order('question_order', { ascending: true });
 
     // Handle database errors

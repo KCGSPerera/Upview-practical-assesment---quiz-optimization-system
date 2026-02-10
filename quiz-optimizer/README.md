@@ -1,5 +1,7 @@
 # Quiz Optimization System
 
+**Developed By:** Gavithra Perera
+
 A full-stack web application that uses **Dynamic Programming (0/1 Knapsack)** to optimize quiz question selection. Given a time constraint, the system recommends the optimal subset of questions that maximizes total score without exceeding available time.
 
 Built as a technical assessment demonstrating proficiency in algorithm implementation, full-stack development, and clean code practices.
@@ -64,7 +66,8 @@ Get your credentials from:
 
 1. Open your Supabase project's SQL Editor
 2. Run the contents of `supabase/schema.sql` (creates tables, indexes, triggers)
-3. Optionally run `supabase/seed.sql` for sample data (2 quizzes, 9 questions)
+3. **Optional:** Run `supabase/add_difficulty_migration.sql` to add difficulty filtering feature
+4. Optionally run `supabase/seed.sql` for sample data (2 quizzes, 9 questions with difficulty levels)
 
 ### 5. Run the Development Server
 
@@ -100,6 +103,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - `question_text` (TEXT, NOT NULL)
 - **`score`** (INTEGER, > 0) - Points for selecting this question
 - **`time_required`** (INTEGER, > 0) - Time cost in minutes
+- `difficulty` (VARCHAR, CHECK: easy|medium|hard) - Question difficulty level
 - `question_order` (INTEGER)
 - Timestamps: `created_at`, `updated_at`
 
@@ -150,6 +154,7 @@ Returns all questions for a specific quiz.
 
 **Parameters:**
 - `quizId` (URL param) - UUID of the quiz
+- `difficulty` (query param, optional) - Filter by difficulty: `easy`, `medium`, or `hard`
 
 **Response:**
 ```typescript
@@ -162,6 +167,7 @@ Returns all questions for a specific quiz.
 
 **Status Codes:**
 - `200` - Success
+- `400` - Invalid difficulty parameter
 - `404` - Quiz not found
 
 ### `POST /api/answers`
@@ -354,6 +360,13 @@ Find:
 - React Testing Library for components
 - Playwright/Cypress for E2E tests
 - API endpoint testing
+
+---
+
+## Optional Features
+
+### Difficulty Filtering
+An optional feature allows filtering quiz questions by difficulty level (easy, medium, hard). Users can select a difficulty from a dropdown on the Quiz Attempt page, which filters questions via the `GET /api/quizzes/[quizId]/questions?difficulty=` endpoint. This feature is fully backward compatible—when no filter is applied, all questions are returned. The core optimization algorithm (0/1 Knapsack) remains unchanged and operates on whatever questions are displayed. This demonstrates extensibility without breaking existing functionality.
 
 ---
 
